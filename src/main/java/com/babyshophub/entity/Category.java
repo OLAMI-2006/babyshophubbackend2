@@ -14,6 +14,8 @@ public class Category {
     private String name;
 
     private String description;
+    @Column(nullable = false, columnDefinition = "boolean default true")
+    private boolean active = true;
 
     // Constructors, Getters, and Setters
     public Category() {}
@@ -26,4 +28,6 @@ public class Category {
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+    public boolean isActive() { return active; }
+    public void setActive(boolean active) { this.active = active; }
 }

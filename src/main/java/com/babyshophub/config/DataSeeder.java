@@ -9,12 +9,17 @@ import java.time.LocalDate;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Value;
 
 @Component
 public class DataSeeder implements CommandLineRunner {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    @Value("${APP_ADMIN_EMAIL:admin@babyshophub.com}")
+    private String adminEmail;
+    @Value("${APP_ADMIN_INITIAL_PASSWORD:}")
+    private String initialPassword;
 
     public DataSeeder(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
@@ -23,13 +28,16 @@ public class DataSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        String adminEmail = "admin@babyshophub.com";
+        if (initialPassword == null || initialPassword.isBlank()) {
+            System.out.println(">>> Admin bootstrap skipped: set APP_ADMIN_INITIAL_PASSWORD to seed an admin account.");
+            return;
+        }
 
         if (userRepository.findByEmail(adminEmail).isEmpty()) {
             User admin = new User();
             admin.setName("System Admin");
             admin.setEmail(adminEmail);
-            admin.setPassword(passwordEncoder.encode("AdminSecurePassword123!"));
+            admin.setPassword(passwordEncoder.encode(initialPassword));
             admin.setPhoneNumber("08000000000");
             admin.setEnabled(true);
             admin.setDob(LocalDate.of(1990, 1, 1));

@@ -1,42 +1,50 @@
 package com.babyshophub.service;
 
 import com.babyshophub.dto.ChangePasswordRequest;
+import com.babyshophub.dto.AuthResponse;
 import com.babyshophub.dto.LoginRequest;
 import com.babyshophub.dto.RegisterRequest;
 import com.babyshophub.dto.ResetPasswordRequest;
 import com.babyshophub.entity.User;
+import com.babyshophub.entity.PasswordResetOtp;
 import com.babyshophub.enums.Role;
 import com.babyshophub.repository.UserRepository;
+import com.babyshophub.repository.PasswordResetOtpRepository;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.Random;
+import java.security.SecureRandom;
 
 @Service
 public class AuthService {
+
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
     private final AuthenticationManager authenticationManager;
+    private final JwtService jwtService;
+    private final PasswordResetOtpRepository passwordResetOtpRepository;
 
     public AuthService(UserRepository userRepository, 
                        PasswordEncoder passwordEncoder, 
                        EmailService emailService, 
-                       AuthenticationManager authenticationManager) {
+                       AuthenticationManager authenticationManager,
+                       JwtService jwtService,
+                       PasswordResetOtpRepository passwordResetOtpRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
         this.authenticationManager = authenticationManager;
+        this.jwtService = jwtService;
+        this.passwordResetOtpRepository = passwordResetOtpRepository;
     }
 
     public String registerCustomer(RegisterRequest request) {
@@ -109,7 +117,7 @@ public class AuthService {
         return "A new verification code has been sent to your email.";
     }
 
-    public String loginUser(LoginRequest request, HttpServletRequest httpRequest) {
+    public AuthResponse loginUser(LoginRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("Invalid email or password"));
 
@@ -120,17 +128,11 @@ public class AuthService {
         Authentication authentication = authenticationManager.authenticate(
             new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
         );
-
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        HttpSession session = httpRequest.getSession(true);
-        session.setAttribute("SPRING_SECURITY_CONTEXT", SecurityContextHolder.getContext());
-
-        return "User logged in successfully!";
+        return new AuthResponse(jwtService.issueToken(user), "Bearer", jwtService.getExpirationSeconds());
     }
 
     private String generateVerificationCode() {
-        Random random = new Random();
-        int code = 100000 + random.nextInt(900000);
+        int code = 100000 + SECURE_RANDOM.nextInt(900000);
         return String.valueOf(code);
     }
     
@@ -138,12 +140,23 @@ public class AuthService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found with this email"));
 
-        String resetCode = generateVerificationCode();
-        user.setResetPasswordToken(resetCode);
-        user.setResetPasswordTokenExpiresAt(LocalDateTime.now().plusMinutes(15));
-        userRepository.save(user);
+        var previous = passwordResetOtpRepository.findTopByUserEmailOrderByCreatedAtDesc(email);
+        if (previous.isPresent() && previous.get().getCreatedAt().isAfter(LocalDateTime.now().minusSeconds(60))) {
+            throw new RuntimeException("Please wait before requesting another password reset code.");
+        }
+        passwordResetOtpRepository.findAllByUserEmailAndUsedFalse(email).forEach(otp -> {
+            otp.setUsed(true);
+            passwordResetOtpRepository.save(otp);
+        });
 
-        emailService.sendVerificationEmail(user.getEmail(), resetCode);
+        String resetCode = generateVerificationCode();
+        PasswordResetOtp otp = new PasswordResetOtp();
+        otp.setUser(user);
+        otp.setOtpHash(passwordEncoder.encode(resetCode));
+        otp.setExpiresAt(LocalDateTime.now().plusMinutes(10));
+        passwordResetOtpRepository.save(otp);
+
+        emailService.sendPasswordResetEmail(user.getEmail(), resetCode);
 
         return "Password reset code has been sent to your email.";
     }
@@ -153,21 +166,24 @@ public class AuthService {
             throw new RuntimeException("New password and confirm password do not match.");
         }
 
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        if (user.getResetPasswordToken() == null || 
-            !user.getResetPasswordToken().equals(request.getResetCode())) {
-            throw new RuntimeException("Invalid reset code.");
-        }
-
-        if (user.getResetPasswordTokenExpiresAt().isBefore(LocalDateTime.now())) {
+        User user = userRepository.findByEmail(request.getEmail()).orElseThrow(() -> new RuntimeException("Invalid reset code."));
+        PasswordResetOtp otp = passwordResetOtpRepository.findTopByUserEmailAndUsedFalseOrderByCreatedAtDesc(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("Invalid or expired reset code."));
+        if (otp.getExpiresAt().isBefore(LocalDateTime.now())) {
+            otp.setUsed(true);
+            passwordResetOtpRepository.save(otp);
             throw new RuntimeException("Reset code has expired.");
         }
-
+        if (otp.getAttempts() >= 5) throw new RuntimeException("Too many attempts. Request a new reset code.");
+        if (!passwordEncoder.matches(request.getResetCode(), otp.getOtpHash())) {
+            otp.setAttempts(otp.getAttempts() + 1);
+            if (otp.getAttempts() >= 5) otp.setUsed(true);
+            passwordResetOtpRepository.save(otp);
+            throw new RuntimeException("Invalid reset code.");
+        }
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
-        user.setResetPasswordToken(null);
-        user.setResetPasswordTokenExpiresAt(null);
+        otp.setUsed(true);
+        passwordResetOtpRepository.save(otp);
         userRepository.save(user);
 
         return "Password has been successfully reset. You can now log in.";

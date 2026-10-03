@@ -37,11 +37,16 @@ public class User {
     private String phoneNumber;
    
     private boolean enabled = false; 
+    private Boolean suspended = false;
     private String verificationCode;
     private LocalDateTime verificationCodeExpiresAt; 
     
     private String resetPasswordToken;
     private LocalDateTime resetPasswordTokenExpiresAt;
+
+    @Column(name = "created_at", nullable = false, updatable = false,
+            columnDefinition = "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP")
+    private LocalDateTime createdAt = LocalDateTime.now();
     
     @ElementCollection(fetch = FetchType.EAGER)
     @Enumerated(EnumType.STRING)
@@ -70,6 +75,8 @@ public class User {
 
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public boolean isSuspended() { return Boolean.TRUE.equals(suspended); }
+    public void setSuspended(boolean suspended) { this.suspended = suspended; }
 
     public String getVerificationCode() { return verificationCode; }
     public void setVerificationCode(String verificationCode) { this.verificationCode = verificationCode; }
@@ -82,6 +89,9 @@ public class User {
 
     public String getResetPasswordToken() { return resetPasswordToken; }
     public void setResetPasswordToken(String resetPasswordToken) { this.resetPasswordToken = resetPasswordToken; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
     public Set<Role> getRoles() { return roles; }
     public void setRoles(Set<Role> roles) { this.roles = roles; }

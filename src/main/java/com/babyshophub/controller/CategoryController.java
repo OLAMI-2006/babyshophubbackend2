@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.babyshophub.entity.Category;
+import com.babyshophub.dto.CategoryResponse;
 import com.babyshophub.service.CategoryService;
 
 @RestController
@@ -22,8 +22,8 @@ public class CategoryController {
 
     // Public: Anyone can view categories
     @GetMapping
-    public ResponseEntity<List<Category>> getAllCategories() {
-        return ResponseEntity.ok(categoryService.getAllCategories());
+    public ResponseEntity<List<CategoryResponse>> getAllCategories() {
+        return ResponseEntity.ok(categoryService.getAllCategories().stream().map(CategoryResponse::from).toList());
     }
 
 
