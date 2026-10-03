@@ -1,20 +1,17 @@
 package com.babyshophub.controller;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.web.bind.annotation.*;
 
 import com.babyshophub.dto.RegisterRequest;
+import com.babyshophub.dto.AuthResponse;
 import com.babyshophub.dto.LoginRequest;
 import com.babyshophub.dto.ResendOtpRequest;
 import com.babyshophub.dto.ResetPasswordRequest;
 import com.babyshophub.dto.VerifyRequest;
+import com.babyshophub.dto.EmailRequest;
 import com.babyshophub.service.AuthService;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 
 @RestController
@@ -33,9 +30,9 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<String> login(@RequestBody LoginRequest request, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
         try {
-            String response = authService.loginUser(request, httpRequest);
+            AuthResponse response = authService.loginUser(request);
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
             return ResponseEntity.status(401).body(e.getMessage());
@@ -63,9 +60,15 @@ public class AuthController {
     }
     
     @PostMapping("/forgot-password")
-    public ResponseEntity<String> forgotPassword(@RequestParam String email) {
+    public ResponseEntity<String> forgotPassword(
+            @RequestParam(required = false) String email,
+            @Valid @RequestBody(required = false) EmailRequest request) {
         try {
-            return ResponseEntity.ok(authService.forgotPassword(email));
+            String requestedEmail = email != null ? email : request == null ? null : request.getEmail();
+            if (requestedEmail == null || requestedEmail.isBlank()) {
+                return ResponseEntity.badRequest().body("Email is required");
+            }
+            return ResponseEntity.ok(authService.forgotPassword(requestedEmail));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -81,11 +84,7 @@ public class AuthController {
     }
     
     @PostMapping("/logout")
-    public ResponseEntity<String> logout(HttpServletRequest request, HttpServletResponse response) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null) {
-            new SecurityContextLogoutHandler().logout(request, response, auth);
-        }
-        return ResponseEntity.ok("Logged out successfully.");
+    public ResponseEntity<Void> logout() {
+        return ResponseEntity.noContent().build();
     }
 }

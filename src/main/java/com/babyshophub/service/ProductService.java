@@ -3,9 +3,10 @@ package com.babyshophub.service;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.UUID;
+import java.io.InputStream;
+import javax.imageio.ImageIO;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,6 +19,8 @@ import com.babyshophub.entity.Product;
 import com.babyshophub.repository.BrandRepository;
 import com.babyshophub.repository.CategoryRepository;
 import com.babyshophub.repository.ProductRepository;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class ProductService {
@@ -41,20 +44,38 @@ public class ProductService {
             return null;
         }
 
-        try {
-            Path uploadPath = Paths.get(UPLOAD_DIR);
-            if (!Files.exists(uploadPath)) {
-                Files.createDirectories(uploadPath);
+        if (file.getSize() > 5 * 1024 * 1024) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Image must be 5 MB or smaller");
+        }
+        String extension = switch (String.valueOf(file.getContentType()).toLowerCase()) {
+            case "image/jpeg" -> ".jpg";
+            case "image/png" -> ".png";
+            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only JPEG and PNG images are supported");
+        };
+        try (InputStream input = file.getInputStream()) {
+            if (ImageIO.read(input) == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Uploaded file is not a valid image");
             }
+        } catch (java.io.IOException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Could not read uploaded image");
+        }
 
-            String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
-            Path filePath = uploadPath.resolve(fileName);
-            
-            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+        try {
+            Path uploadPath = Paths.get(UPLOAD_DIR).toAbsolutePath().normalize();
+            Files.createDirectories(uploadPath);
+            String fileName = UUID.randomUUID() + extension;
+            Path filePath = uploadPath.resolve(fileName).normalize();
+            if (!filePath.startsWith(uploadPath)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid image path");
+            }
+            try (InputStream input = file.getInputStream()) {
+                Files.copy(input, filePath);
+            }
 
             return "/uploads/products/" + fileName;
         } catch (Exception e) {
-            throw new RuntimeException("Failed to store image file: " + e.getMessage());
+            if (e instanceof ResponseStatusException statusException) throw statusException;
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to store image file");
         }
     }
 
@@ -86,6 +107,28 @@ public class ProductService {
     
     public Product saveProduct(Product product) {
         return productRepository.save(product);
+    }
+
+    public Product updateProduct(Long id, com.babyshophub.dto.ProductUpdateRequest request) {
+        Product product = productRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found"));
+        if (request.getCategoryId() != null) {
+            Category category = categoryRepository.findById(request.getCategoryId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found"));
+            product.setCategory(category);
+        }
+        if (request.getBrandId() != null) {
+            Brand brand = brandRepository.findById(request.getBrandId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Brand not found"));
+            product.setBrand(brand);
+        }
+        if (request.getName() != null) product.setName(request.getName());
+        if (request.getDescription() != null) product.setDescription(request.getDescription());
+        if (request.getPrice() != null) product.setPrice(request.getPrice());
+        if (request.getStockQty() != null) product.setStockQty(request.getStockQty());
+        return productRepository.save(product);
+    }
+
+    public void deactivateProduct(Long id) {
+        Product product = productRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found"));
+        product.setActive(false); productRepository.save(product);
     }
     
     
