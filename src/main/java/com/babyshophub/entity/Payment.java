@@ -20,7 +20,7 @@ public class Payment {
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;
     @Column(nullable = false)
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private final LocalDateTime createdAt = LocalDateTime.now();
 
     public Long getPaymentId() { return paymentId; }
     public ShopOrder getOrder() { return order; }

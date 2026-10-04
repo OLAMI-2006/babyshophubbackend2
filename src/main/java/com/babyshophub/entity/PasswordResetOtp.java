@@ -19,7 +19,7 @@ public class PasswordResetOtp {
     @Column(nullable = false)
     private boolean used = false;
     @Column(nullable = false)
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private final LocalDateTime createdAt = LocalDateTime.now();
 
     public Long getOtpId() { return otpId; }
     public User getUser() { return user; }

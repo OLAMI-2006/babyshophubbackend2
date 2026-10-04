@@ -12,15 +12,12 @@ import com.babyshophub.repository.BrandRepository;
 import com.babyshophub.repository.CategoryRepository;
 import com.babyshophub.repository.ProductRepository;
 import com.babyshophub.repository.UserRepository;
-import com.babyshophub.service.JwtService;
 import com.babyshophub.service.CartService;
 import com.babyshophub.service.OrderService;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -31,9 +28,6 @@ import java.time.LocalDate;
 @ActiveProfiles("test")
 class BabyshophubApplicationTests {
 
-	@Autowired private JwtService jwtService;
-	@Autowired private JwtDecoder jwtDecoder;
-	@Autowired private JwtAuthenticationConverter jwtAuthenticationConverter;
 	@Autowired private UserRepository userRepository;
 	@Autowired private CategoryRepository categoryRepository;
 	@Autowired private BrandRepository brandRepository;
@@ -44,18 +38,6 @@ class BabyshophubApplicationTests {
 
 	@Test
 	void contextLoads() {
-	}
-
-	@Test
-	void jwtContainsVerifiedRoleAndIsAcceptedByDecoder() {
-		User user = new User();
-		user.setName("JWT test"); user.setEmail("jwt-test@example.com");
-		user.setPassword("already-encoded-for-test"); user.setPhoneNumber("08000000000");
-		user.setDob(LocalDate.of(2000, 1, 1)); user.getRoles().add(Role.ROLE_ADMIN);
-		var jwt = jwtDecoder.decode(jwtService.issueToken(user));
-		var authentication = jwtAuthenticationConverter.convert(jwt);
-		Assertions.assertEquals(user.getEmail(), jwt.getSubject());
-		Assertions.assertTrue(authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN")));
 	}
 
 	@Test
@@ -77,8 +59,10 @@ class BabyshophubApplicationTests {
 		Assertions.assertEquals(new BigDecimal("25.00"), order.totalAmount());
 		Assertions.assertEquals("PAID", order.paymentStatus());
 		Assertions.assertEquals(2, order.items().getFirst().quantity());
-		Assertions.assertEquals(2, productRepository.findById(product.getProductId()).orElseThrow().getStockQty());
-		Assertions.assertThrows(ResponseStatusException.class, () -> orderService.myOrder("someone-else@example.com", order.orderId()));
+		Assertions.assertEquals(Integer.valueOf(2), productRepository.findById(product.getProductId()).orElseThrow().getStockQty());
+		ResponseStatusException exception = Assertions.assertThrows(ResponseStatusException.class,
+				() -> orderService.myOrder("someone-else@example.com", order.orderId()));
+		Assertions.assertNotNull(exception);
 	}
 
 }

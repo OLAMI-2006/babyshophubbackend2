@@ -20,6 +20,7 @@ public class ShopOrderItem {
     public void setUnitPrice(BigDecimal unitPrice) { this.unitPrice = unitPrice; }
     public void setSubtotal(BigDecimal subtotal) { this.subtotal = subtotal; }
     public Long getOrderItemId() { return orderItemId; }
+    public ShopOrder getOrder() { return order; }
     public Product getProduct() { return product; }
     public String getProductName() { return productName; }
     public int getQuantity() { return quantity; }

@@ -10,7 +10,7 @@ public class CartItem {
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "user_id", nullable = false) private User user;
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "product_id", nullable = false) private Product product;
     @Column(nullable = false) private int quantity;
-    @Column(nullable = false) private LocalDateTime addedAt = LocalDateTime.now();
+    @Column(nullable = false) private final LocalDateTime addedAt = LocalDateTime.now();
     public Long getCartItemId() { return cartItemId; }
     public User getUser() { return user; }
     public void setUser(User user) { this.user = user; }

@@ -73,9 +73,8 @@ public class ProductService {
             }
 
             return "/uploads/products/" + fileName;
-        } catch (Exception e) {
-            if (e instanceof ResponseStatusException statusException) throw statusException;
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to store image file");
+        } catch (java.io.IOException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to store image file", e);
         }
     }
 

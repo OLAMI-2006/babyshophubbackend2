@@ -7,7 +7,7 @@ public class OrderTracking {
  @ManyToOne(fetch=FetchType.LAZY) @JoinColumn(name="order_id",nullable=false) private ShopOrder order;
  @Column(nullable=false) private String status;
  private String note;
- @Column(nullable=false) private LocalDateTime createdAt=LocalDateTime.now();
+ @Column(nullable=false) private final LocalDateTime createdAt=LocalDateTime.now();
  public Long getTrackingId(){return trackingId;} public ShopOrder getOrder(){return order;} public void setOrder(ShopOrder order){this.order=order;}
  public String getStatus(){return status;} public void setStatus(String status){this.status=status;}
  public String getNote(){return note;} public void setNote(String note){this.note=note;}

@@ -13,13 +13,13 @@ public class ShopOrder {
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "user_id", nullable = false) private User user;
     @Column(name = "shipping_address_snapshot", nullable = false, length = 1000) private String shippingAddress;
     @Column(nullable = false, precision = 12, scale = 2) private BigDecimal totalAmount;
-    @Column(nullable = false) private String paymentStatus = "PAID";
+    @Column(nullable = false) private final String paymentStatus = "PAID";
     @Column(nullable = false) private String orderStatus = "CONFIRMED";
-    @Column(nullable = false) private LocalDateTime createdAt = LocalDateTime.now();
+    @Column(nullable = false) private final LocalDateTime createdAt = LocalDateTime.now();
     @Column(nullable = false) private LocalDateTime updatedAt = LocalDateTime.now();
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true) private List<ShopOrderItem> items = new ArrayList<>();
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true) private List<OrderTracking> tracking = new ArrayList<>();
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true) private List<Payment> payments = new ArrayList<>();
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true) private final List<ShopOrderItem> items = new ArrayList<>();
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true) private final List<OrderTracking> tracking = new ArrayList<>();
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true) private final List<Payment> payments = new ArrayList<>();
     public Long getOrderId() { return orderId; }
     public User getUser() { return user; }
     public void setUser(User user) { this.user = user; }
@@ -37,6 +37,7 @@ public class ShopOrder {
     public List<OrderTracking> getTracking() { return tracking; }
     public void addTracking(OrderTracking event) { tracking.add(event); event.setOrder(this); }
     public void addPayment(Payment payment) { payments.add(payment); payment.setOrder(this); }
+    @PrePersist
     @PreUpdate
-    void updateTimestamp() { updatedAt = LocalDateTime.now(); }
+    public void updateTimestamp() { this.updatedAt = LocalDateTime.now(); }
 }

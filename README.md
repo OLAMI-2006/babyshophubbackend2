@@ -19,8 +19,6 @@ Supply configuration through environment variables. Do not commit real credentia
 | `DB_URL` | No | `jdbc:mysql://localhost:3306/babyshophub_db` |
 | `DB_USERNAME` | No | `root` |
 | `DB_PASSWORD` | No | Empty string; set a local MySQL password as needed |
-| `JWT_SECRET` | Yes | At least 32 UTF-8 bytes; keep private and use a different value per environment |
-| `JWT_EXPIRATION_SECONDS` | No | `3600` |
 | `CORS_ALLOWED_ORIGINS` | No | Comma-separated origins; defaults to common local web development ports |
 | `MAIL_USERNAME`, `MAIL_PASSWORD` | For email | SMTP credentials for verification and reset emails |
 | `APP_ADMIN_INITIAL_PASSWORD` | Optional | If set on first startup, creates the admin user |
@@ -46,7 +44,7 @@ Swagger UI is available at `/swagger-ui/index.html`; the OpenAPI document is at 
 
 ## Authentication
 
-Register and verify an account, then call `POST /api/auth/login`. Login returns `accessToken`, `tokenType`, and `expiresInSeconds`. Send the token on protected requests as `Authorization: Bearer <accessToken>`. The API is stateless: logout returns `204`; the client must discard its token. Admin endpoints require the `ROLE_ADMIN` claim.
+Register and verify an account, then call `POST /api/auth/login`. A successful login returns `204` and establishes a Spring Security session cookie. Send that cookie with protected requests; browser clients must enable credentials. `POST /api/auth/logout` invalidates the session. Admin endpoints require the `ROLE_ADMIN` role.
 
 ## API areas
 

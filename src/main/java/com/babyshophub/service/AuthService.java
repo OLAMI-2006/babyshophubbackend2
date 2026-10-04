@@ -1,7 +1,6 @@
 package com.babyshophub.service;
 
 import com.babyshophub.dto.ChangePasswordRequest;
-import com.babyshophub.dto.AuthResponse;
 import com.babyshophub.dto.LoginRequest;
 import com.babyshophub.dto.RegisterRequest;
 import com.babyshophub.dto.ResetPasswordRequest;
@@ -30,20 +29,17 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
     private final AuthenticationManager authenticationManager;
-    private final JwtService jwtService;
     private final PasswordResetOtpRepository passwordResetOtpRepository;
 
     public AuthService(UserRepository userRepository, 
                        PasswordEncoder passwordEncoder, 
                        EmailService emailService, 
                        AuthenticationManager authenticationManager,
-                       JwtService jwtService,
                        PasswordResetOtpRepository passwordResetOtpRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
         this.authenticationManager = authenticationManager;
-        this.jwtService = jwtService;
         this.passwordResetOtpRepository = passwordResetOtpRepository;
     }
 
@@ -117,7 +113,7 @@ public class AuthService {
         return "A new verification code has been sent to your email.";
     }
 
-    public AuthResponse loginUser(LoginRequest request) {
+    public Authentication loginUser(LoginRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("Invalid email or password"));
 
@@ -125,10 +121,9 @@ public class AuthService {
             throw new RuntimeException("Account not verified. Please verify your email.");
         }
 
-        Authentication authentication = authenticationManager.authenticate(
+        return authenticationManager.authenticate(
             new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
         );
-        return new AuthResponse(jwtService.issueToken(user), "Bearer", jwtService.getExpirationSeconds());
     }
 
     private String generateVerificationCode() {

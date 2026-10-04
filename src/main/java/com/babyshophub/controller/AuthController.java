@@ -4,7 +4,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.babyshophub.dto.RegisterRequest;
-import com.babyshophub.dto.AuthResponse;
 import com.babyshophub.dto.LoginRequest;
 import com.babyshophub.dto.ResendOtpRequest;
 import com.babyshophub.dto.ResetPasswordRequest;
@@ -13,6 +12,12 @@ import com.babyshophub.dto.EmailRequest;
 import com.babyshophub.service.AuthService;
 
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -30,10 +35,20 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request, HttpServletRequest servletRequest) {
         try {
-            AuthResponse response = authService.loginUser(request);
-            return ResponseEntity.ok(response);
+            Authentication authentication = authService.loginUser(request);
+            HttpSession existingSession = servletRequest.getSession(false);
+            if (existingSession != null) {
+                existingSession.invalidate();
+            }
+
+            SecurityContext context = SecurityContextHolder.createEmptyContext();
+            context.setAuthentication(authentication);
+            SecurityContextHolder.setContext(context);
+            servletRequest.getSession(true).setAttribute(
+                    HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, context);
+            return ResponseEntity.noContent().build();
         } catch (RuntimeException e) {
             return ResponseEntity.status(401).body(e.getMessage());
         }
@@ -84,7 +99,12 @@ public class AuthController {
     }
     
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout() {
+    public ResponseEntity<Void> logout(HttpServletRequest servletRequest) {
+        HttpSession session = servletRequest.getSession(false);
+        if (session != null) {
+            session.invalidate();
+        }
+        SecurityContextHolder.clearContext();
         return ResponseEntity.noContent().build();
     }
 }

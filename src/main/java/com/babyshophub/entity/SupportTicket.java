@@ -9,7 +9,7 @@ public class SupportTicket {
  @Column(nullable=false,columnDefinition="TEXT") private String message;
  @Column(columnDefinition="TEXT") private String adminResponse;
  @Column(nullable=false) private String status="OPEN";
- @Column(nullable=false) private LocalDateTime createdAt=LocalDateTime.now();
+ @Column(nullable=false) private final LocalDateTime createdAt=LocalDateTime.now();
  public Long getTicketId(){return ticketId;} public User getUser(){return user;} public void setUser(User user){this.user=user;}
  public String getSubject(){return subject;} public void setSubject(String subject){this.subject=subject;}
  public String getMessage(){return message;} public void setMessage(String message){this.message=message;}
